@@ -23,17 +23,6 @@ class InsMem(object):  # read instruction
         return "".join(self.IMem[read_address : read_address + 4])
     
 
-""" the following code can also work
-    def readInstr(self, ReadAddress):
-        inst = 0
-        for i in range(ReadAddress, ReadAddress + 4):
-            inst = inst | int(self.IMem[i],2) # change into decimal number
-            if i < ReadAddress + 3:
-                inst = inst<<8
-        
-        return format(inst,'#010x') #'0x'+8 bit hex
-"""
-        
           
 class DataMem(object):
     def __init__(self, name, ioDir):
