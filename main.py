@@ -920,128 +920,155 @@ class WriteBackStage:
             self.state.WB.nop = True
 #up for phase 2 
 
-# class FiveStageCore(Core_five):
-#     def __init__(self, ioDir, imem, dmem):
-#         super(FiveStageCore, self).__init__(ioDir + os.sep + "FS_", imem, dmem)
-#         self.opFilePath = ioDir + os.sep + "StateResult_FS.txt"
-
-#         self.if_stage = InstructionFetchStage(self.state, self.ext_imem)
-#         self.id_stage = InstructionDecodeStage(self.state, self.myRF)
-#         self.ex_stage = ExecutionStage(self.state)
-#         self.mem_stage = MemoryAccessStage(self.state, self.ext_dmem)
-#         self.wb_stage = WriteBackStage(self.state, self.myRF)
-
-#     def step(self):
-#         # Your implementation
-
-#         if (
-#             self.state.IF.nop
-#             and self.state.ID.nop
-#             and self.state.EX.nop
-#             and self.state.MEM.nop
-#             and self.state.WB.nop
-#         ):
-#             self.halted = True
-#         current_instr = self.state.ID.instr
-#         # --------------------- WB stage ---------------------
-#         self.wb_stage.run()
-
-#         # --------------------- MEM stage --------------------
-#         self.mem_stage.run()
-
-#         # --------------------- EX stage ---------------------
-#         self.ex_stage.run()
-
-#         # --------------------- ID stage ---------------------
-#         self.id_stage.run()
-
-#         # --------------------- IF stage ---------------------
-#         self.if_stage.run()
-
-#         self.myRF.output_RF(self.cycle)  # dump RF
-#         self.printState(
-#             self.state, self.cycle
-#         )  # print states after executing cycle 0, cycle 1, cycle 2 ...
-
-#         # self.state.next()  # The end of the cycle and updates the current state with the values calculated in this cycle
-#         self.num_instr += int(current_instr != self.state.ID.instr)
-#         self.cycle += 1
-
-#     def printState(self, state, cycle):
-#         printstate = [
-#             "-" * 70 + "\n",
-#             "State after executing cycle: " + str(cycle) + "\n",
-#         ]  # "-"*70+"\n",  dividing line
-#         """
-#         # IF
-#         printstate.append("IF.PC: " + str(state.IF["PC"]) + "\n")
-#         printstate.append("IF.nop: " + str(state.IF["nop"]) + "\n" + "\n")
-#         # ID
-#         printstate.append("ID.Instr: " + str(format(state.ID["Instr"],'032b')) + "\n")
-#         printstate.append("ID.nop: " + str(state.ID["nop"]) + "\n" + "\n")
-#         # EX
-#         printstate.append("EX.Operand1: " + str(format(state.EX["rs1"],'032b')) + "\n")
-#         printstate.append("EX.Operand2: " + str(format(state.EX["rs2"],'032b')) + "\n")
-#         printstate.append("EX.StData: " + str(state.EX["Imm"]) + "\n")  # StData ?
-#         printstate.append("EX.DestReg: " + str(format(state.EX["rd"],'05b')) + "\n") # 5 bit binary
-#         printstate.append("EX.AluOperation: " + str(format(state.EX["alu_op"],'02b')) + "\n") # 2 bit binary
-#         printstate.append("EX.UpdatePC: " + str(state.EX["Imm"]) + "\n")   # need to set another new state.UPC bit
-#         printstate.append("EX.WBEnable: " + str(state.EX["wrt_enable"]) + "\n")
-#         printstate.append("EX.RdDMem: " + str(state.EX["rd_mem"]) + "\n")  # "rd_mem" need here
-#         printstate.append("EX.WrDMem: " + str(state.EX["wrt_mem"]) + "\n") 
-#         printstate.append("EX.Halt: " + str(state.EX["wrt_mem"]) + "\n")  # different from nop? which is this?
-#         printstate.append("EX.nop: " + str(state.EX["nop"]) + "\n")
-#         # MEM
-#         printstate.append("MEM.ALUresult: " + str(format(state.MEM["ALUresult"],'032b')) + "\n")
-#         printstate.append("MEM.Store_data: " + str(format(state.MEM["Store_data"],'032b')) + "\n")
-#         """
-
-#         printstate.append("\n")
-#         printstate.extend(
-#             [
-#                 "IF." + key + ": " + str(val) + "\n"
-#                 for key, val in state.IF.__dict__().items()
-#             ]
-#         )
-#         printstate.append("\n")
-#         printstate.extend(
-#             [
-#                 "ID." + key + ": " + str(val) + "\n"
-#                 for key, val in state.ID.__dict__().items()
-#             ]
-#         )
-#         printstate.append("\n")
-#         printstate.extend(
-#             [
-#                 "EX." + key + ": " + str(val) + "\n"
-#                 for key, val in state.EX.__dict__().items()
-#             ]
-#         )
-#         printstate.append("\n")
-#         printstate.extend(
-#             [
-#                 "MEM." + key + ": " + str(val) + "\n"
-#                 for key, val in state.MEM.__dict__().items()
-#             ]
-#         )
-#         printstate.append("\n")
-#         printstate.extend(
-#             [
-#                 "WB." + key + ": " + str(val) + "\n"
-#                 for key, val in state.WB.__dict__().items()
-#             ]
-#         )
-
-#         if cycle == 0:
-#             perm = "w"
-#         else:
-#             perm = "a"
-
-#         with open(self.opFilePath, perm) as wf:
-#             wf.writelines(printstate)
 
 
-# -----------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+#added for phase 2
+class FiveStageCore(Core_five):
+    def __init__(self, ioDir, imem, dmem):
+        super(FiveStageCore, self).__init__(ioDir + os.sep + "FS_", imem, dmem)
+        self.opFilePath = ioDir + os.sep + "StateResult_FS.txt"
+
+        self.if_stage = InstructionFetchStage(self.state, self.ext_imem)
+        self.id_stage = InstructionDecodeStage(self.state, self.myRF)
+        self.ex_stage = ExecutionStage(self.state)
+        self.mem_stage = MemoryAccessStage(self.state, self.ext_dmem)
+        self.wb_stage = WriteBackStage(self.state, self.myRF)
+
+    def step(self):
+        # Your implementation
+
+        if (
+            self.state.IF.nop
+            and self.state.ID.nop
+            and self.state.EX.nop
+            and self.state.MEM.nop
+            and self.state.WB.nop
+        ):
+            self.halted = True
+        current_instr = self.state.ID.instr
+        # --------------------- WB stage ---------------------
+        self.wb_stage.run()
+
+        # --------------------- MEM stage --------------------
+        self.mem_stage.run()
+
+        # --------------------- EX stage ---------------------
+        self.ex_stage.run()
+
+        # --------------------- ID stage ---------------------
+        self.id_stage.run()
+
+        # --------------------- IF stage ---------------------
+        self.if_stage.run()
+
+        self.myRF.output_RF(self.cycle)  # dump RF
+        self.printState(
+            self.state, self.cycle
+        )  # print states after executing cycle 0, cycle 1, cycle 2 ...
+
+        # self.state.next()  # The end of the cycle and updates the current state with the values calculated in this cycle
+        self.num_instr += int(current_instr != self.state.ID.instr)
+        self.cycle += 1
+
+    def printState(self, state, cycle):
+        printstate = [
+            "-" * 70 + "\n",
+            "State after executing cycle: " + str(cycle) + "\n",
+        ]  # "-"*70+"\n",  dividing line
+        """
+        # IF
+        printstate.append("IF.PC: " + str(state.IF["PC"]) + "\n")
+        printstate.append("IF.nop: " + str(state.IF["nop"]) + "\n" + "\n")
+        # ID
+        printstate.append("ID.Instr: " + str(format(state.ID["Instr"],'032b')) + "\n")
+        printstate.append("ID.nop: " + str(state.ID["nop"]) + "\n" + "\n")
+        # EX
+        printstate.append("EX.Operand1: " + str(format(state.EX["rs1"],'032b')) + "\n")
+        printstate.append("EX.Operand2: " + str(format(state.EX["rs2"],'032b')) + "\n")
+        printstate.append("EX.StData: " + str(state.EX["Imm"]) + "\n")  # StData ?
+        printstate.append("EX.DestReg: " + str(format(state.EX["rd"],'05b')) + "\n") # 5 bit binary
+        printstate.append("EX.AluOperation: " + str(format(state.EX["alu_op"],'02b')) + "\n") # 2 bit binary
+        printstate.append("EX.UpdatePC: " + str(state.EX["Imm"]) + "\n")   # need to set another new state.UPC bit
+        printstate.append("EX.WBEnable: " + str(state.EX["wrt_enable"]) + "\n")
+        printstate.append("EX.RdDMem: " + str(state.EX["rd_mem"]) + "\n")  # "rd_mem" need here
+        printstate.append("EX.WrDMem: " + str(state.EX["wrt_mem"]) + "\n") 
+        printstate.append("EX.Halt: " + str(state.EX["wrt_mem"]) + "\n")  # different from nop? which is this?
+        printstate.append("EX.nop: " + str(state.EX["nop"]) + "\n")
+        # MEM
+        printstate.append("MEM.ALUresult: " + str(format(state.MEM["ALUresult"],'032b')) + "\n")
+        printstate.append("MEM.Store_data: " + str(format(state.MEM["Store_data"],'032b')) + "\n")
+        """
+
+        printstate.append("\n")
+        printstate.extend(
+            [
+                "IF." + key + ": " + str(val) + "\n"
+                for key, val in state.IF.__dict__().items()
+            ]
+        )
+        printstate.append("\n")
+        printstate.extend(
+            [
+                "ID." + key + ": " + str(val) + "\n"
+                for key, val in state.ID.__dict__().items()
+            ]
+        )
+        printstate.append("\n")
+        printstate.extend(
+            [
+                "EX." + key + ": " + str(val) + "\n"
+                for key, val in state.EX.__dict__().items()
+            ]
+        )
+        printstate.append("\n")
+        printstate.extend(
+            [
+                "MEM." + key + ": " + str(val) + "\n"
+                for key, val in state.MEM.__dict__().items()
+            ]
+        )
+        printstate.append("\n")
+        printstate.extend(
+            [
+                "WB." + key + ": " + str(val) + "\n"
+                for key, val in state.WB.__dict__().items()
+            ]
+        )
+
+        if cycle == 0:
+            perm = "w"
+        else:
+            perm = "a"
+
+        with open(self.opFilePath, perm) as wf:
+            wf.writelines(printstate)
+
+#added for phase 2
+
+
+
+
+
+
+
+
+
+
+
+
 # print metrics
 # single cycle metrics:
 def single_metrics(opFilePath: str, ss: SingleStageCore):
@@ -1056,37 +1083,60 @@ def single_metrics(opFilePath: str, ss: SingleStageCore):
         f.write("\n".join(ss_metrics))
 
 #up for phase 2
+
+
+
+
+
+
+
+
+# phase 2
 # five stage metrics:
-# def five_metrics(opFilePath: str, fs: FiveStageCore):
-#     # print after add one instr, no need to add one instr
-#     fs_metrics = [
-#         "Five Stage Core Performance Metrics:",
-#         f"Number of Cycles taken:  {fs.cycle}",
-#         f"Cycles per instruction: {fs.cycle / fs.num_instr}",
-#         f"Instructions per cycle: {fs.num_instr / fs.cycle}",
-#     ]
+def five_metrics(opFilePath: str, fs: FiveStageCore):
+    # print after add one instr, no need to add one instr
+    fs_metrics = [
+        "Five Stage Core Performance Metrics:",
+        f"Number of Cycles taken:  {fs.cycle}",
+        f"Cycles per instruction: {fs.cycle / fs.num_instr}",
+        f"Instructions per cycle: {fs.num_instr / fs.cycle}",
+    ]
 
-#     with open(opFilePath + os.sep + "FiveMetrics.txt", "w") as f:
-#         f.write("\n".join(fs_metrics))
+    with open(opFilePath + os.sep + "FiveMetrics.txt", "w") as f:
+        f.write("\n".join(fs_metrics))
 
 
-# def Performance_metrics(opFilePath: str, ss: SingleStageCore, fs: FiveStageCore):
-#     ss_metrics = [
-#         "Single Stage Core Performance Metrics: ",
-#         f"Number of Cycles taken:  {ss.cycle}",
-#         f"Cycles per instruction:  {int( (ss.cycle - 1)/ss.inst )}",
-#         f"Instructions per cycle:  {int( ss.inst/(ssCore.cycle - 1) )}",
-#     ]
+def Performance_metrics(opFilePath: str, ss: SingleStageCore, fs: FiveStageCore):
+    ss_metrics = [
+        "Single Stage Core Performance Metrics: ",
+        f"Number of Cycles taken:  {ss.cycle}",
+        f"Cycles per instruction:  {int( (ss.cycle - 1)/ss.inst )}",
+        f"Instructions per cycle:  {int( ss.inst/(ssCore.cycle - 1) )}",
+    ]
 
-#     fs_metrics = [
-#         "Five Stage Core Performance Metrics:",
-#         f"Number of Cycles taken:  {fs.cycle}",
-#         f"Cycles per instruction: {fs.cycle / fs.num_instr}",
-#         f"Instructions per cycle: {fs.num_instr / fs.cycle}",
-#     ]
+    fs_metrics = [
+        "Five Stage Core Performance Metrics:",
+        f"Number of Cycles taken:  {fs.cycle}",
+        f"Cycles per instruction: {fs.cycle / fs.num_instr}",
+        f"Instructions per cycle: {fs.num_instr / fs.cycle}",
+    ]
 
-#     with open(opFilePath + os.sep + "PerformanceMetrics_Result.txt", "w") as f:
-#         f.write("\n".join(ss_metrics) + "\n\n" + "\n".join(fs_metrics))
+    with open(opFilePath + os.sep + "PerformanceMetrics_Result.txt", "w") as f:
+        f.write("\n".join(ss_metrics) + "\n\n" + "\n".join(fs_metrics))
+
+
+
+
+
+
+
+#phase 2 added part ended
+
+
+
+
+
+
 
 
 # main
