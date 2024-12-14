@@ -1,4 +1,0 @@
-Five Stage Core Performance Metrics:
-Number of Cycles taken:  10
-Cycles per instruction: 2.0
-Instructions per cycle: 0.5
