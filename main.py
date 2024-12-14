@@ -25,6 +25,18 @@ class InsMem(object):  # read instruction
         # return 32 bit str binary instruction
         return "".join(self.IMem[read_address : read_address + 4])
 
+# ERROR CODE
+# the following code can also work
+#     def readInstr(self, ReadAddress):
+#         inst = 0
+#         for i in range(ReadAddress, ReadAddress + 4):
+#             inst = inst | int(self.IMem[i],2) # change into decimal number
+#             if i < ReadAddress + 3:
+#                 inst = inst<<8
+        
+#         return format(inst,'#010x') #'0x'+8 bit hex
+# 
+
 
 class DataMem(object):
     def __init__(self, name, ioDir):
@@ -43,17 +55,16 @@ class DataMem(object):
         )  # change into decimal number
         return format(data32, "#010x")  #'0x'+8 bit hex
 
-    """ the following code can also work
-    def readDataMem(self, ReadAddress):        
-                data32 = 0
-        for i in range(ReadAddress, ReadAddress + 4):
-            data32 = data32 | int(self.DMem[i],2) # change into decimal number
-            if i != ReadAddress + 3:
-                data32 = data32<<8
+    #error code
+    # def readDataMem(self, ReadAddress):        
+    #             data32 = 0
+    #     for i in range(ReadAddress, ReadAddress + 4):
+    #         data32 = data32 | int(self.DMem[i],2) # change into decimal number
+    #         if i != ReadAddress + 3:
+    #             data32 = data32<<8
         
-        return format(data32,'#010x') #'0x'+8 bit hex
-    """
-
+    #     return format(data32,'#010x') #'0x'+8 bit hex
+    
     def writeDataMem(self, Address, WriteData):
         # write data into byte addressable memory
         mask8 = int("0b11111111", 2)  # 8-bit mask
@@ -90,7 +101,9 @@ class DataMem(object):
 class RegisterFile(object):
     def __init__(self, ioDir):
         self.outputFile = ioDir + "RFResult.txt"
-        self.Registers = [0x0 for i in range(32)]  # 32 registers for single cycle
+        self.Registers = [
+            0x0 for i in range(32)
+        ]  # 32 registers for single cycle
         self.registers = [int2bin(0) for _ in range(32)]  # five stage
 
     def readRF(self, Reg_addr):  # read register
@@ -198,6 +211,7 @@ class Core(object):
 # ------------------------------------
 # single cycle functions
 
+
 # ALU arithmetic implement
 def Calculate_R(funct7, funct3, rs1, rs2):
     rd = 0
@@ -256,7 +270,9 @@ def Calculate_I(funct3, rs1, imm):
 # single cycle cpu
 class SingleStageCore(Core):
     def __init__(self, ioDir, imem, dmem):
-        super(SingleStageCore, self).__init__(ioDir + os.sep + "SS_", imem, dmem)
+        super(SingleStageCore, self).__init__(
+            ioDir + os.sep + "SS_", imem, dmem
+        )
         self.opFilePath = ioDir + os.sep + "StateResult_SS.txt"
 
     def step(self):
@@ -279,10 +295,16 @@ class SingleStageCore(Core):
         ):
             self.nextState.IF["PC"] = self.state.IF["PC"] + 4
         else:
-            self.state.IF["taken"] = False  # take branch, then set taken to False again
+            self.state.IF["taken"] = (
+                False  # take branch, then set taken to False again
+            )
 
-        self.myRF.outputRF(self.cycle)  # output file of registers after each cycle
-        self.printState(self.nextState, self.cycle)  # print states after each cycle
+        self.myRF.outputRF(
+            self.cycle
+        )  # output file of registers after each cycle
+        self.printState(
+            self.nextState, self.cycle
+        )  # print states after each cycle
 
         self.state = (
             self.nextState
@@ -342,7 +364,12 @@ class SingleStageCore(Core):
             imm11 = (fetchedInstr >> 20) & 1
             imm10_1 = (fetchedInstr >> 21) & ((1 << 10) - 1)
             imm20 = (fetchedInstr >> 31) & 1
-            imm = (imm20 << 20) | (imm10_1 << 1) | (imm11 << 11) | (imm19_12 << 12)
+            imm = (
+                (imm20 << 20)
+                | (imm10_1 << 1)
+                | (imm11 << 11)
+                | (imm19_12 << 12)
+            )
 
             # get rd
             rd = (fetchedInstr >> 7) & ((1 << 5) - 1)
@@ -373,7 +400,9 @@ class SingleStageCore(Core):
                 data_rs1 = self.myRF.readRF(rs1)
                 data_rs2 = self.myRF.readRF(rs2)
                 if data_rs1 == data_rs2:
-                    self.nextState.IF["PC"] = self.state.IF["PC"] + sign_extend(imm, 12)
+                    self.nextState.IF["PC"] = self.state.IF["PC"] + sign_extend(
+                        imm, 12
+                    )
                     self.state.IF["taken"] = True
 
             # BNE
@@ -381,7 +410,9 @@ class SingleStageCore(Core):
                 data_rs1 = self.myRF.readRF(rs1)
                 data_rs2 = self.myRF.readRF(rs2)
                 if data_rs1 != data_rs2:
-                    self.nextState.IF["PC"] = self.state.IF["PC"] + sign_extend(imm, 12)
+                    self.nextState.IF["PC"] = self.state.IF["PC"] + sign_extend(
+                        imm, 12
+                    )
                     self.state.IF["taken"] = True
 
         # LW
@@ -445,6 +476,12 @@ class SingleStageCore(Core):
             wf.writelines(printstate)
 
 
+
+
+
+
+
+#phase 2 
 # -----------------------------------------
 # five stages
 class InstructionFetchState:
@@ -630,7 +667,9 @@ class InstructionDecodeStage:
             # EX to 2nd
             # MEM to 2nd
             return 1
-        elif rs == self.state.MEM.write_reg_addr and self.state.MEM.read_mem != 0:
+        elif (
+            rs == self.state.MEM.write_reg_addr and self.state.MEM.read_mem != 0
+        ):
             # MEM to 1st
             self.state.ID.hazard_nop = True
             return 1
@@ -807,9 +846,9 @@ class InstructionDecodeStage:
             self.state.EX.read_data_1 = self.read_data(rs1, forward_signal_1)
             self.state.EX.read_data_2 = self.read_data(rs2, forward_signal_2)
 
-            self.state.EX.imm = (self.state.ID.instr[7:12] + self.state.ID.instr[25:])[
-                ::-1
-            ]
+            self.state.EX.imm = (
+                self.state.ID.instr[7:12] + self.state.ID.instr[25:]
+            )[::-1]
             self.state.EX.is_I_type = True
             self.state.EX.write_mem = True
             self.state.EX.alu_op = "00"
@@ -839,22 +878,26 @@ class ExecutionStage:
         # ADD
         if self.state.EX.alu_op == "00":
             self.state.MEM.alu_result = int2bin(
-                bin2int(operand_1, sign_ext=True) + bin2int(operand_2, sign_ext=True)
+                bin2int(operand_1, sign_ext=True)
+                + bin2int(operand_2, sign_ext=True)
             )
         # AND
         elif self.state.EX.alu_op == "01":
             self.state.MEM.alu_result = int2bin(
-                bin2int(operand_1, sign_ext=True) & bin2int(operand_2, sign_ext=True)
+                bin2int(operand_1, sign_ext=True)
+                & bin2int(operand_2, sign_ext=True)
             )
         # OR
         elif self.state.EX.alu_op == "10":
             self.state.MEM.alu_result = int2bin(
-                bin2int(operand_1, sign_ext=True) | bin2int(operand_2, sign_ext=True)
+                bin2int(operand_1, sign_ext=True)
+                | bin2int(operand_2, sign_ext=True)
             )
         # XOR
         elif self.state.EX.alu_op == "11":
             self.state.MEM.alu_result = int2bin(
-                bin2int(operand_1, sign_ext=True) ^ bin2int(operand_2, sign_ext=True)
+                bin2int(operand_1, sign_ext=True)
+                ^ bin2int(operand_2, sign_ext=True)
             )
 
         self.state.MEM.rs = self.state.EX.rs
@@ -914,28 +957,14 @@ class WriteBackStage:
                 self.state.WB.nop = False
             return
         if self.state.WB.write_enable:
-            self.rf.write_RF(self.state.WB.write_reg_addr, self.state.WB.write_data)
+            self.rf.write_RF(
+                self.state.WB.write_reg_addr, self.state.WB.write_data
+            )
 
         if self.state.MEM.nop:
             self.state.WB.nop = True
-#up for phase 2 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#added for phase 2
+#phase 2 
 class FiveStageCore(Core_five):
     def __init__(self, ioDir, imem, dmem):
         super(FiveStageCore, self).__init__(ioDir + os.sep + "FS_", imem, dmem)
@@ -988,29 +1017,6 @@ class FiveStageCore(Core_five):
             "-" * 70 + "\n",
             "State after executing cycle: " + str(cycle) + "\n",
         ]  # "-"*70+"\n",  dividing line
-        """
-        # IF
-        printstate.append("IF.PC: " + str(state.IF["PC"]) + "\n")
-        printstate.append("IF.nop: " + str(state.IF["nop"]) + "\n" + "\n")
-        # ID
-        printstate.append("ID.Instr: " + str(format(state.ID["Instr"],'032b')) + "\n")
-        printstate.append("ID.nop: " + str(state.ID["nop"]) + "\n" + "\n")
-        # EX
-        printstate.append("EX.Operand1: " + str(format(state.EX["rs1"],'032b')) + "\n")
-        printstate.append("EX.Operand2: " + str(format(state.EX["rs2"],'032b')) + "\n")
-        printstate.append("EX.StData: " + str(state.EX["Imm"]) + "\n")  # StData ?
-        printstate.append("EX.DestReg: " + str(format(state.EX["rd"],'05b')) + "\n") # 5 bit binary
-        printstate.append("EX.AluOperation: " + str(format(state.EX["alu_op"],'02b')) + "\n") # 2 bit binary
-        printstate.append("EX.UpdatePC: " + str(state.EX["Imm"]) + "\n")   # need to set another new state.UPC bit
-        printstate.append("EX.WBEnable: " + str(state.EX["wrt_enable"]) + "\n")
-        printstate.append("EX.RdDMem: " + str(state.EX["rd_mem"]) + "\n")  # "rd_mem" need here
-        printstate.append("EX.WrDMem: " + str(state.EX["wrt_mem"]) + "\n") 
-        printstate.append("EX.Halt: " + str(state.EX["wrt_mem"]) + "\n")  # different from nop? which is this?
-        printstate.append("EX.nop: " + str(state.EX["nop"]) + "\n")
-        # MEM
-        printstate.append("MEM.ALUresult: " + str(format(state.MEM["ALUresult"],'032b')) + "\n")
-        printstate.append("MEM.Store_data: " + str(format(state.MEM["Store_data"],'032b')) + "\n")
-        """
 
         printstate.append("\n")
         printstate.extend(
@@ -1056,19 +1062,8 @@ class FiveStageCore(Core_five):
         with open(self.opFilePath, perm) as wf:
             wf.writelines(printstate)
 
-#added for phase 2
 
-
-
-
-
-
-
-
-
-
-
-
+# -----------------------------------------
 # print metrics
 # single cycle metrics:
 def single_metrics(opFilePath: str, ss: SingleStageCore):
@@ -1082,16 +1077,10 @@ def single_metrics(opFilePath: str, ss: SingleStageCore):
     with open(opFilePath + os.sep + "SingleMetrics.txt", "w") as f:
         f.write("\n".join(ss_metrics))
 
-#up for phase 2
 
 
 
-
-
-
-
-
-# phase 2
+#phase 2
 # five stage metrics:
 def five_metrics(opFilePath: str, fs: FiveStageCore):
     # print after add one instr, no need to add one instr
@@ -1106,7 +1095,9 @@ def five_metrics(opFilePath: str, fs: FiveStageCore):
         f.write("\n".join(fs_metrics))
 
 
-def Performance_metrics(opFilePath: str, ss: SingleStageCore, fs: FiveStageCore):
+def Performance_metrics(
+    opFilePath: str, ss: SingleStageCore, fs: FiveStageCore
+):
     ss_metrics = [
         "Single Stage Core Performance Metrics: ",
         f"Number of Cycles taken:  {ss.cycle}",
@@ -1125,20 +1116,6 @@ def Performance_metrics(opFilePath: str, ss: SingleStageCore, fs: FiveStageCore)
         f.write("\n".join(ss_metrics) + "\n\n" + "\n".join(fs_metrics))
 
 
-
-
-
-
-
-#phase 2 added part ended
-
-
-
-
-
-
-
-
 # main
 if __name__ == "__main__":
 
@@ -1148,7 +1125,10 @@ if __name__ == "__main__":
         description="RV32I single and five stage processor"
     )
     parser.add_argument(
-        "--iodir", default="", type=str, help="Directory containing the input files."
+        "--iodir",
+        default="",
+        type=str,
+        help="Directory containing the input files.",
     )
     args = parser.parse_args()
 
@@ -1186,16 +1166,14 @@ if __name__ == "__main__":
     # five stages processor
     dmem_fs = DataMem("FS", ioDir)
 
+    fsCore = FiveStageCore(ioDir, imem, dmem_fs)
 
-#up for phase 2
-    # fsCore = FiveStageCore(ioDir, imem, dmem_fs)
+    while True:
+        if not fsCore.halted:
+            fsCore.step()
 
-    # while True:
-    #     if not fsCore.halted:
-    #         fsCore.step()
-
-    #     if fsCore.halted:
-    #         break
+        if fsCore.halted:
+            break
 
     # dump FS data mem.
     dmem_fs.outputDataMem()
@@ -1205,17 +1183,138 @@ if __name__ == "__main__":
     print("Number of Cycles taken: ", ssCore.cycle, end=", ")
     print("Number of Instruction in Imem: ", ssCore.inst, end="\n\n")
 
-    # print("Five Stage Core Performance Metrics: ")
-    # print("Number of Cycles taken: ", fsCore.cycle, end=", ")
-    # # incrementing num of instructions because of an extra HALT instruction which is never decoded
-    # fsCore.num_instr += 1
-    # print("Number of Instruction in Imem: ", fsCore.num_instr, end="\n\n")
+    print("Five Stage Core Performance Metrics: ")
+    print("Number of Cycles taken: ", fsCore.cycle, end=", ")
+    # incrementing num of instructions because of an extra HALT instruction which is never decoded
+    fsCore.num_instr += 1
+    print("Number of Instruction in Imem: ", fsCore.num_instr, end="\n\n")
 
     # print in file
-    # Performance_metrics(ioDir, ssCore, )
-
-    # Performance_metrics(ioDir, ssCore, fsCore)
+    Performance_metrics(ioDir, ssCore, fsCore)
 
     single_metrics(ioDir, ssCore)
-    # five_metrics(ioDir, fsCore)
+    five_metrics(ioDir, fsCore)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#removed content 
+
+        # '''
+        # # IF
+        # printstate.append("IF.PC: " + str(state.IF["PC"]) + "\n")
+        # printstate.append("IF.nop: " + str(state.IF["nop"]) + "\n" + "\n")
+        # # ID
+        # printstate.append("ID.Instr: " + str(format(state.ID["Instr"],'032b')) + "\n")
+        # printstate.append("ID.nop: " + str(state.ID["nop"]) + "\n" + "\n")
+        # # EX
+        # printstate.append("EX.Operand1: " + str(format(state.EX["rs1"],'032b')) + "\n")
+        # printstate.append("EX.Operand2: " + str(format(state.EX["rs2"],'032b')) + "\n")
+        # printstate.append("EX.StData: " + str(state.EX["Imm"]) + "\n")  # StData ?
+        # printstate.append("EX.DestReg: " + str(format(state.EX["rd"],'05b')) + "\n") # 5 bit binary
+        # printstate.append("EX.AluOperation: " + str(format(state.EX["alu_op"],'02b')) + "\n") # 2 bit binary
+        # printstate.append("EX.UpdatePC: " + str(state.EX["Imm"]) + "\n")   # need to set another new state.UPC bit
+        # printstate.append("EX.WBEnable: " + str(state.EX["wrt_enable"]) + "\n")
+        # printstate.append("EX.RdDMem: " + str(state.EX["rd_mem"]) + "\n")  # "rd_mem" need here
+        # printstate.append("EX.WrDMem: " + str(state.EX["wrt_mem"]) + "\n") 
+        # printstate.append("EX.Halt: " + str(state.EX["wrt_mem"]) + "\n")  # different from nop? which is this?
+        # printstate.append("EX.nop: " + str(state.EX["nop"]) + "\n")
+        # # MEM
+        # printstate.append("MEM.ALUresult: " + str(format(state.MEM["ALUresult"],'032b')) + "\n")
+        # printstate.append("MEM.Store_data: " + str(format(state.MEM["Store_data"],'032b')) + "\n")
+        # '''
     
+
+# # -----------------------------------------
+# # print metrics
+# # single cycle metrics:
+# def single_metrics(opFilePath: str, ss: SingleStageCore):
+#     ss_metrics = [
+#         "Single Stage Core Performance Metrics: ",
+#         f"Number of Cycles taken:  {ss.cycle}",
+#         f"Cycles per instruction:  {int( (ss.cycle - 1)/ss.inst )}",
+#         f"Instructions per cycle:  {int( ss.inst/(ssCore.cycle - 1) )}",
+#     ]
+
+#     with open(opFilePath + os.sep + "SingleMetrics.txt", "w") as f:
+#         f.write("\n".join(ss_metrics))
+
+
+# # -----------------------------------------
+# # print metrics
+# # single cycle metrics:
+# def single_metrics(opFilePath: str, ss: SingleStageCore):
+#     ss_metrics = [
+#         "Single Stage Core Performance Metrics: ",
+#         f"Number of Cycles taken:  {ss.cycle}",
+#         f"Cycles per instruction:  {int( (ss.cycle - 1)/ss.inst )}",
+#         f"Instructions per cycle:  {int( ss.inst/(ssCore.cycle - 1) )}",
+#     ]
+
+#     with open(opFilePath + os.sep + "SingleMetrics.txt", "w") as f:
+#         f.write("\n".join(ss_metrics))
+
+

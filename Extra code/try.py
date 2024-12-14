@@ -2,111 +2,222 @@ import os
 import argparse
 
 
-MemSize = 1000  # memory size, in reality, the memory size should be 2^32, but for this lab, for the space resaon, we keep it as this large number, but the memory is still 32-bit addressable.
+MemSize = 1000 # memory size, in reality, the memory size should be 2^32, but for this lab, for the space resaon, we keep it as this large number, but the memory is still 32-bit addressable.
 
-class MemoryComponent:
-    def __init__(self, name, io_dir):
+class InsMem(object):  # read instruction
+    def __init__(self, name, ioDir):
         self.id = name
-        self.io_dir = io_dir
+        
+        with open(ioDir + os.sep + "imem.txt") as im:
+            self.IMem = [data.replace("\n", "") for data in im.readlines()]
 
-    def read_file(self, filename):
-        with open(self.io_dir + os.sep + filename) as f:
-            return [data.strip() for data in f.readlines()]
+    def readInstr(self, ReadAddress):
+        #read instruction memory
+        #return 32 bit hex val
+        inst = int("".join(self.IMem[ReadAddress : ReadAddress + 4]),2) # change into decimal number
+        return format(inst,'#010x') #'0x'+8 bit hex
+    
+    def read_instr(self, read_address: int) -> str:
+        # read instruction memory
+        # return 32 bit str binary instruction
+        return "".join(self.IMem[read_address : read_address + 4])
+    
 
+""" the following code can also work
+    def readInstr(self, ReadAddress):
+        inst = 0
+        for i in range(ReadAddress, ReadAddress + 4):
+            inst = inst | int(self.IMem[i],2) # change into decimal number
+            if i < ReadAddress + 3:
+                inst = inst<<8
+        
+        return format(inst,'#010x') #'0x'+8 bit hex
+"""
+        
+          
+class DataMem(object):
+    def __init__(self, name, ioDir):
+        self.id = name
+        self.ioDir = ioDir
+        with open(ioDir + os.sep + "dmem.txt") as dm:
+            self.DMem = [data.replace("\n", "") for data in dm.readlines()]
+        # fill in the empty memory with 0s
+        self.DMem = self.DMem + (['00000000'] * (MemSize - len(self.DMem))) 
 
-class InsMem(MemoryComponent):
-    def __init__(self, name, io_dir):
-        super().__init__(name, io_dir)
-        self.imem = self.read_file("imem.txt")
+    def readDataMem(self, ReadAddress):
+        #read data memory
+        #return 32 bit hex val 8
+        data32 = int("".join(self.DMem[ReadAddress : ReadAddress + 4]),2) # change into decimal number
+        return format(data32,'#010x') #'0x'+8 bit hex
+    
+    
+    """ the following code can also work
+    def readDataMem(self, ReadAddress):        
+                data32 = 0
+        for i in range(ReadAddress, ReadAddress + 4):
+            data32 = data32 | int(self.DMem[i],2) # change into decimal number
+            if i != ReadAddress + 3:
+                data32 = data32<<8
+        
+        return format(data32,'#010x') #'0x'+8 bit hex
+    """
+    
+    def writeDataMem(self, Address, WriteData):
+        # write data into byte addressable memory
+        mask8 = int('0b11111111',2) # 8-bit mask
+        data8_arr = []
 
-    def read_instr(self, read_address):
-        instr = "".join(self.imem[read_address:read_address + 4])
-        return format(int(instr, 2), "#010x")
-
-class DataMem(MemoryComponent):
-    def __init__(self, name, io_dir):
-        super().__init__(name, io_dir)
-        self.dmem = self.read_file("dmem.txt")
-        self.dmem += ["00000000"] * (MemSize - len(self.dmem))
-
-    def read_data_mem(self, read_address):
-        data = "".join(self.dmem[read_address:read_address + 4])
-        return format(int(data, 2), "#010x")
-
-    def write_data_mem(self, address, write_data):
+        for j in range(4):
+            data8_arr.append(WriteData & mask8)
+            WriteData = WriteData>>8
+        
         for i in range(4):
-            self.dmem[address + i] = format((write_data >> (8 * i)) & 0xFF, "08b")
+            # most significant bit(last element in data8_arr) in smallest address
+            self.DMem[Address + i] = format(data8_arr.pop(),'08b')
 
-    def output_data_mem(self):
-        res_path = f"{self.io_dir}{os.sep}{self.id}_DMEMResult.txt"
-        with open(res_path, "w") as f:
-            f.writelines(f"{data}\n" for data in self.dmem)
+    # five stage func
+    def read_data_mem(self, read_addr: str) -> str:
+        # read data memory
+        # return 32 bit hex val
+        read_addr_int = bin2int(read_addr)
+        return "".join(self.DMem[read_addr_int : read_addr_int + 4])
+
+    def write_data_mem(self, addr: str, write_data: str):
+        # write data into byte addressable memory
+        addr_int = bin2int(addr)
+        for i in range(4):
+            self.DMem[addr_int + i] = write_data[8 * i : 8 * (i + 1)]
+    
+    # output file of Dmem  SS_DMEMResult.txt              
+    def outputDataMem(self):
+        resPath = self.ioDir + os.sep + self.id + "_DMEMResult.txt"
+        with open(resPath, "w") as rp:
+            rp.writelines([str(data) + "\n" for data in self.DMem])
+
+class RegisterFile(object):
+    def __init__(self, ioDir):
+        self.outputFile = ioDir + "RFResult.txt"
+        self.Registers = [0x0 for i in range(32)] # 32 registers for single cycle
+        self.registers = [int2bin(0) for _ in range(32)] # five stage
+    
+    def readRF(self, Reg_addr): # read register
+        return self.Registers[Reg_addr]
+    
+    def writeRF(self, Reg_addr, Wrt_reg_data): # write into registers
+        if Reg_addr != 0:
+            self.Registers[Reg_addr] = Wrt_reg_data & ((1 << 32) - 1) # and 32 bits 1 mask
+
+    # output file of registers  SS_RFResult.txt
+    def outputRF(self, cycle):
+        op = ["State of RF after executing cycle:  " + str(cycle) + "\n"]   # "-"*70+"\n",  dividing line
+        op.extend([format(val,'032b')+"\n" for val in self.Registers])
+        if(cycle == 0): perm = "w"
+        else: perm = "a"
+        with open(self.outputFile, perm) as file:
+            file.writelines(op)
+    
+    # five stage
+    def read_RF(self, reg_addr: str) -> str:
+        # Fill in
+        return self.registers[bin2int(reg_addr)]
+
+    def write_RF(self, reg_addr: str, wrt_reg_data: str):
+        # Fill in
+        if reg_addr == "00000":
+            return
+        self.registers[bin2int(reg_addr)] = wrt_reg_data
+
+    def output_RF(self, cycle):
+        op = ["State of RF after executing cycle:" + str(cycle) + "\n"]
+        op.extend([f"{val}" + "\n" for val in self.registers])
+        if cycle == 0:
+            perm = "w"
+        else:
+            perm = "a"
+        with open(self.outputFile, perm) as file:
+            file.writelines(op)
+
+class State(object):
+    def __init__(self):
+        self.IF = {"nop": bool(False), "PC": int(0), "taken": bool(False)}
+        self.ID = {"nop": bool(False), "instr": str("0"*32), "PC": int(0), "hazard_nop": bool(False)}
+        self.EX = {"nop": bool(False), "instr": str("0"*32), "Read_data1": str("0"*32), "Read_data2": str("0"*32), "Imm": str("0"*32), "Rs": str("0"*5), "Rt": str("0"*5), "Wrt_reg_addr": str("0"*5), "is_I_type": bool(False), "rd_mem": bool(False), 
+                   "wrt_mem": bool(False), "alu_op": str("00"), "wrt_enable": bool(False)} # alu_op 00 -> add, 01 -> and, 10 -> or, 11 -> xor
+        self.MEM = {"nop": bool(False), "ALUresult": str("0"*32), "Store_data": str("0"*32), "Rs": str("0"*5), "Rt": str("0"*5), "Wrt_reg_addr": str("0"*5), "rd_mem": bool(False), 
+                   "wrt_mem": bool(False), "wrt_enable": bool(False)}
+        self.WB = {"nop": bool(False), "Wrt_data": str("0"*32), "Rs": str("0"*5), "Rt": str("0"*5), "Wrt_reg_addr": str("0"*5), "wrt_enable": bool(False)}
+
+
+class Core(object):
+    def __init__(self, ioDir, imem, dmem):
+        self.myRF = RegisterFile(ioDir)
+        self.cycle = 0
+        self.inst = 0
+        self.halted = False
+        self.ioDir = ioDir
+        self.state = State()
+        self.nextState = State()
+        self.ext_imem = imem
+        self.ext_dmem = dmem
 
 
 
-class RegisterFile:
-    def __init__(self, io_dir):
-        self.output_file = f"{io_dir}RFResult.txt"
-        self.registers = [0] * 32
+#------------------------------------
+# single cycle functions
 
-    def read_rf(self, reg_addr):
-        return self.registers[reg_addr]
+# ALU arithmetic implement
+def Calculate_R(funct7, funct3, rs1, rs2):
+    rd = 0
+    # ADD
+    if funct7 == 0b0000000 and funct3 == 0b000:
+        rd = rs1 + rs2
 
-    def write_rf(self, reg_addr, wrt_reg_data):
-        if reg_addr != 0:
-            self.registers[reg_addr] = wrt_reg_data & 0xFFFFFFFF
+    # SUB
+    if funct7 == 0b0100000 and funct3 == 0b000:
+        rd = rs1 - rs2
 
-    def output_rf(self, cycle):
-        op = [f"State of RF after executing cycle: {cycle}\n"]
-        op.extend(f"{val:032b}\n" for val in self.registers)
-        with open(self.output_file, "a" if cycle else "w") as f:
-            f.writelines(op)
+    # XOR
+    if funct7 == 0b0000000 and funct3 == 0b100:
+        rd = rs1 ^ rs2
 
+    # OR
+    if funct7 == 0b0000000 and funct3 == 0b110:
+        rd = rs1 | rs2
 
+    # AND
+    if funct7 == 0b0000000 and funct3 == 0b111:
+        rd = rs1 & rs2
 
+    return rd
+
+# compute sign extended immediate, sign bit:most significant bit location
 def sign_extend(val, sign_bit):
-    if val & (1 << sign_bit):
-        return val - (1 << (sign_bit + 1))
-    return val
 
-def bin2int(binary_str):
-    return int(binary_str, 2)
+    if (val & (1 << sign_bit)) != 0:  # get sign bit, if is set 
+        val = val - (1 << (sign_bit + 1))  # negative value complement
+    return val  
 
-def int2bin(integer, width=32):
-    return format(integer & ((1 << width) - 1), f"0{width}b")
+def Calculate_I(funct3, rs1, imm):
+    rd = 0
+    # ADDI
+    if funct3 == 0b000:
+        rd = rs1 + sign_extend(imm, 11)
 
+    # XORI
+    if funct3 == 0b100:
+        rd = rs1 ^ sign_extend(imm, 11)
 
+    # ORI
+    if funct3 == 0b110:
+        rd = rs1 | sign_extend(imm, 11)
 
-class ALU:
-    def calculate_r(funct7, funct3, rs1, rs2):
-        if funct7 == 0b0000000:
-            if funct3 == 0b000:
-                return rs1 + rs2  # ADD
-            elif funct3 == 0b100:
-                return rs1 ^ rs2  # XOR
-            elif funct3 == 0b110:
-                return rs1 | rs2  # OR
-            elif funct3 == 0b111:
-                return rs1 & rs2  # AND
-        elif funct7 == 0b0100000 and funct3 == 0b000:
-            return rs1 - rs2  # SUB
-        raise ValueError("Invalid R-type instruction")
+    # ANDI
+    if funct3 == 0b111:
+        rd = rs1 & sign_extend(imm, 11)
 
-    @staticmethod
-    def calculate_i(funct3, rs1, imm):
-        imm = sign_extend(imm, 11)
-        if funct3 == 0b000:
-            return rs1 + imm  # ADDI
-        elif funct3 == 0b100:
-            return rs1 ^ imm  # XORI
-        elif funct3 == 0b110:
-            return rs1 | imm  # ORI
-        elif funct3 == 0b111:
-            return rs1 & imm  # ANDI
-        raise ValueError("Invalid I-type instruction")
+    return rd
 
-
-
+    
 # single cycle cpu
 class SingleStageCore(Core):
     def __init__(self, ioDir, imem, dmem):
@@ -116,33 +227,27 @@ class SingleStageCore(Core):
     def step(self):
         # implementation of each instruction
 
-        fetchedInstr = int(
-            self.ext_imem.readInstr(self.state.IF["PC"]), 16
-        )  # hex into integer
-        opcode = fetchedInstr & (2**7 - 1)  # least significant 7 bits
+        fetchedInstr = int(self.ext_imem.readInstr(self.state.IF["PC"]), 16) # hex into integer
+        opcode = fetchedInstr & (2 ** 7 - 1) # least significant 7 bits
 
         # decode and then execute
         self.Decode(opcode, fetchedInstr)
-
+        
         self.halted = False
         if self.state.IF["nop"]:
             self.halted = True
-
-        if not self.state.IF["taken"] and self.state.IF["PC"] + 4 < len(
-            self.ext_imem.IMem
-        ):
+        
+        if not self.state.IF["taken"] and self.state.IF["PC"] + 4 < len(self.ext_imem.IMem):
             self.nextState.IF["PC"] = self.state.IF["PC"] + 4
         else:
-            self.state.IF["taken"] = False  # take branch, then set taken to False again
-
-        self.myRF.outputRF(self.cycle)  # output file of registers after each cycle
-        self.printState(self.nextState, self.cycle)  # print states after each cycle
-
-        self.state = (
-            self.nextState
-        )  # The end of the cycle and updates the current state with the values calculated in this cycle
+            self.state.IF["taken"] = False # take branch, then set taken to False again
+            
+        self.myRF.outputRF(self.cycle) # output file of registers after each cycle
+        self.printState(self.nextState, self.cycle) # print states after each cycle
+            
+        self.state = self.nextState #The end of the cycle and updates the current state with the values calculated in this cycle
         self.cycle += 1
-        self.inst += 1  # instruction counter
+        self.inst += 1 # instruction counter
 
     def Decode(self, opcode, fetchedInstr):
         # R-type
@@ -248,15 +353,9 @@ class SingleStageCore(Core):
             # get rd
             rd = (fetchedInstr >> 7) & ((1 << 5) - 1)
 
-            self.myRF.writeRF(
-                Reg_addr=rd,
-                Wrt_reg_data=int(
-                    self.ext_dmem.readDataMem(
-                        ReadAddress=self.myRF.readRF(rs1) + sign_extend(imm, 11)
-                    ),
-                    16,
-                ),
-            )
+            self.myRF.writeRF(Reg_addr=rd,
+                              Wrt_reg_data=int(self.ext_dmem.readDataMem(
+                                  ReadAddress=self.myRF.readRF(rs1) + sign_extend(imm, 11)), 16))
 
         # SW
         elif opcode == 0b0100011:
@@ -273,10 +372,8 @@ class SingleStageCore(Core):
             # get rd
             rs2 = (fetchedInstr >> 20) & ((1 << 5) - 1)
 
-            self.ext_dmem.writeDataMem(
-                Address=(rs1 + sign_extend(imm, 11)) & ((1 << 32) - 1),
-                WriteData=self.myRF.readRF(rs2),
-            )
+            self.ext_dmem.writeDataMem(Address=(rs1 + sign_extend(imm, 11)) & ((1 << 32) - 1),
+                                       WriteData=self.myRF.readRF(rs2))
 
         # HALT
         else:
@@ -284,22 +381,20 @@ class SingleStageCore(Core):
 
     # print StateResult_SS.txt
     def printState(self, state, cycle):
-        printstate = [
-            "State after executing cycle: " + str(cycle) + "\n"
-        ]  # "-"*70+"\n",    dividing line
+        printstate = ["State after executing cycle: " + str(cycle) + "\n"] # "-"*70+"\n",    dividing line
         printstate.append("IF.PC: " + str(state.IF["PC"]) + "\n")
         printstate.append("IF.nop: " + str(state.IF["nop"]) + "\n")
-
-        if cycle == 0:
+        
+        if(cycle == 0): 
             perm = "w"
-        else:
+        else: 
             perm = "a"
 
         with open(self.opFilePath, perm) as wf:
             wf.writelines(printstate)
 
 
-# -----------------------------------------
+#-----------------------------------------
 # five stages
 class InstructionFetchState:
     def __init__(self) -> None:
@@ -309,17 +404,15 @@ class InstructionFetchState:
     def __dict__(self):
         return {"PC": self.PC, "nop": self.nop}
 
-
 class InstructionDecodeState:
     def __init__(self) -> None:
         self.nop: bool = True
         self.hazard_nop: bool = False
         self.PC: int = 0
-        self.instr: str = "0" * 32
+        self.instr: str = "0"*32
 
     def __dict__(self):
         return {"Instr": self.instr[::-1], "nop": self.nop}
-
 
 class ExecutionState:
     def __init__(self) -> None:
@@ -334,7 +427,7 @@ class ExecutionState:
         self.is_I_type: bool = False
         self.read_mem: bool = False
         self.write_mem: bool = False
-        self.alu_op: str = "00"  # 00 -> add, 01 -> and, 10 -> or, 11 -> xor
+        self.alu_op: str = "00" # 00 -> add, 01 -> and, 10 -> or, 11 -> xor
         self.write_enable: bool = False
 
     def __dict__(self):
@@ -353,7 +446,6 @@ class ExecutionState:
             "alu_op": "".join(list(map(str, self.alu_op))),
             "wrt_enable": int(self.write_enable),
         }
-
 
 class MemoryAccessState:
     def __init__(self) -> None:
@@ -380,7 +472,6 @@ class MemoryAccessState:
             "wrt_enable": int(self.write_enable),
         }
 
-
 class WriteBackState:
     def __init__(self) -> None:
         self.nop: bool = True
@@ -400,7 +491,6 @@ class WriteBackState:
             "wrt_enable": int(self.write_enable),
         }
 
-
 class State_five(object):
     def __init__(self):
         self.IF = InstructionFetchState()
@@ -415,7 +505,6 @@ class State_five(object):
         self.MEM = MemoryAccessState()
         self.WB = WriteBackState()
 
-
 class Core_five(object):
     def __init__(self, ioDir, imem, dmem):
         self.myRF = RegisterFile(ioDir)
@@ -427,7 +516,6 @@ class Core_five(object):
         self.nextState = State_five()
         self.ext_imem = imem
         self.ext_dmem = dmem
-
 
 def int2bin(x: int, n_bits: int = 32) -> str:
     bin_x = bin(x & (2**n_bits - 1))[2:]
@@ -451,11 +539,7 @@ class InstructionFetchStage:
         self.ins_mem = ins_mem
 
     def run(self):
-        if (
-            self.state.IF.nop
-            or self.state.ID.nop
-            or (self.state.ID.hazard_nop and self.state.EX.nop)
-        ):
+        if self.state.IF.nop or self.state.ID.nop or (self.state.ID.hazard_nop and self.state.EX.nop):
             return
         instr = self.ins_mem.read_instr(self.state.IF.PC)[::-1]
         if instr == "1" * 32:
@@ -465,7 +549,6 @@ class InstructionFetchStage:
             self.state.ID.PC = self.state.IF.PC
             self.state.IF.PC += 4
             self.state.ID.instr = instr
-
 
 class InstructionDecodeStage:
     def __init__(
@@ -602,9 +685,7 @@ class InstructionDecodeStage:
             self.state.EX.write_enable = True
             self.state.EX.alu_op = "00"
 
-            self.state.IF.PC = self.state.ID.PC + bin2int(
-                self.state.EX.imm, sign_ext=True
-            )
+            self.state.IF.PC = self.state.ID.PC + bin2int(self.state.EX.imm, sign_ext=True)
             self.state.ID.nop = True
 
         elif opcode == "1100011":
@@ -636,9 +717,7 @@ class InstructionDecodeStage:
             )[::-1]
 
             if (diff == 0 and func3 == "000") or (diff != 0 and func3 == "001"):
-                self.state.IF.PC = self.state.ID.PC + bin2int(
-                    self.state.EX.imm, sign_ext=True
-                )
+                self.state.IF.PC = self.state.ID.PC + bin2int(self.state.EX.imm, sign_ext=True)
                 self.state.ID.nop = True
                 self.state.EX.nop = True
             else:
@@ -661,9 +740,7 @@ class InstructionDecodeStage:
             self.state.EX.read_data_1 = self.read_data(rs1, forward_signal_1)
             self.state.EX.read_data_2 = self.read_data(rs2, forward_signal_2)
 
-            self.state.EX.imm = (self.state.ID.instr[7:12] + self.state.ID.instr[25:])[
-                ::-1
-            ]
+            self.state.EX.imm = (self.state.ID.instr[7:12] + self.state.ID.instr[25:])[::-1]
             self.state.EX.is_I_type = True
             self.state.EX.write_mem = True
             self.state.EX.alu_op = "00"
@@ -672,9 +749,11 @@ class InstructionDecodeStage:
             self.state.ID.nop = True
         return 1
 
-
 class ExecutionStage:
-    def __init__(self, state: State_five):
+    def __init__(
+        self, 
+        state: State_five
+    ):
         self.state = state
 
     def run(self):
@@ -723,9 +802,12 @@ class ExecutionStage:
         if self.state.ID.nop:
             self.state.EX.nop = True
 
-
 class MemoryAccessStage:
-    def __init__(self, state: State_five, data_mem: DataMem):
+    def __init__(
+        self, 
+        state: State_five, 
+        data_mem: DataMem
+    ):
         self.state = state
         self.data_mem = data_mem
 
@@ -734,11 +816,9 @@ class MemoryAccessStage:
             if not self.state.EX.nop:
                 self.state.MEM.nop = False
             return
-
+            
         if self.state.MEM.read_mem != 0:
-            self.state.WB.write_data = self.data_mem.read_data_mem(
-                self.state.MEM.alu_result
-            )
+            self.state.WB.write_data = self.data_mem.read_data_mem(self.state.MEM.alu_result)
         elif self.state.MEM.write_mem != 0:
             self.data_mem.write_data_mem(
                 self.state.MEM.alu_result, self.state.MEM.store_data
@@ -751,7 +831,6 @@ class MemoryAccessStage:
 
         if self.state.EX.nop:
             self.state.MEM.nop = True
-
 
 class WriteBackStage:
     def __init__(
@@ -772,24 +851,8 @@ class WriteBackStage:
 
         if self.state.MEM.nop:
             self.state.WB.nop = True
-#up for phase 2 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#added for phase 2
 class FiveStageCore(Core_five):
     def __init__(self, ioDir, imem, dmem):
         super(FiveStageCore, self).__init__(ioDir + os.sep + "FS_", imem, dmem)
@@ -800,6 +863,8 @@ class FiveStageCore(Core_five):
         self.ex_stage = ExecutionStage(self.state)
         self.mem_stage = MemoryAccessStage(self.state, self.ext_dmem)
         self.wb_stage = WriteBackStage(self.state, self.myRF)
+
+        
 
     def step(self):
         # Your implementation
@@ -838,11 +903,8 @@ class FiveStageCore(Core_five):
         self.cycle += 1
 
     def printState(self, state, cycle):
-        printstate = [
-            "-" * 70 + "\n",
-            "State after executing cycle: " + str(cycle) + "\n",
-        ]  # "-"*70+"\n",  dividing line
-        """
+        printstate = ["-"*70+"\n", "State after executing cycle: " + str(cycle) + "\n"]  # "-"*70+"\n",  dividing line
+        '''
         # IF
         printstate.append("IF.PC: " + str(state.IF["PC"]) + "\n")
         printstate.append("IF.nop: " + str(state.IF["nop"]) + "\n" + "\n")
@@ -864,66 +926,29 @@ class FiveStageCore(Core_five):
         # MEM
         printstate.append("MEM.ALUresult: " + str(format(state.MEM["ALUresult"],'032b')) + "\n")
         printstate.append("MEM.Store_data: " + str(format(state.MEM["Store_data"],'032b')) + "\n")
-        """
+        '''
 
         printstate.append("\n")
-        printstate.extend(
-            [
-                "IF." + key + ": " + str(val) + "\n"
-                for key, val in state.IF.__dict__().items()
-            ]
-        )
+        printstate.extend(["IF." + key + ": " + str(val) + "\n" for key, val in state.IF.__dict__().items()])
         printstate.append("\n")
-        printstate.extend(
-            [
-                "ID." + key + ": " + str(val) + "\n"
-                for key, val in state.ID.__dict__().items()
-            ]
-        )
+        printstate.extend(["ID." + key + ": " + str(val) + "\n" for key, val in state.ID.__dict__().items()])
         printstate.append("\n")
-        printstate.extend(
-            [
-                "EX." + key + ": " + str(val) + "\n"
-                for key, val in state.EX.__dict__().items()
-            ]
-        )
+        printstate.extend(["EX." + key + ": " + str(val) + "\n" for key, val in state.EX.__dict__().items()])
         printstate.append("\n")
-        printstate.extend(
-            [
-                "MEM." + key + ": " + str(val) + "\n"
-                for key, val in state.MEM.__dict__().items()
-            ]
-        )
+        printstate.extend(["MEM." + key + ": " + str(val) + "\n" for key, val in state.MEM.__dict__().items()])
         printstate.append("\n")
-        printstate.extend(
-            [
-                "WB." + key + ": " + str(val) + "\n"
-                for key, val in state.WB.__dict__().items()
-            ]
-        )
-
-        if cycle == 0:
+        printstate.extend(["WB." + key + ": " + str(val) + "\n" for key, val in state.WB.__dict__().items()])
+        
+        if(cycle == 0): 
             perm = "w"
-        else:
+        else: 
             perm = "a"
-
+            
         with open(self.opFilePath, perm) as wf:
             wf.writelines(printstate)
 
-#added for phase 2
-
-
-
-
-
-
-
-
-
-
-
-
-# print metrics
+#-----------------------------------------
+# print metrics 
 # single cycle metrics:
 def single_metrics(opFilePath: str, ss: SingleStageCore):
     ss_metrics = [
@@ -936,16 +961,6 @@ def single_metrics(opFilePath: str, ss: SingleStageCore):
     with open(opFilePath + os.sep + "SingleMetrics.txt", "w") as f:
         f.write("\n".join(ss_metrics))
 
-#up for phase 2
-
-
-
-
-
-
-
-
-# phase 2
 # five stage metrics:
 def five_metrics(opFilePath: str, fs: FiveStageCore):
     # print after add one instr, no need to add one instr
@@ -959,7 +974,6 @@ def five_metrics(opFilePath: str, fs: FiveStageCore):
     with open(opFilePath + os.sep + "FiveMetrics.txt", "w") as f:
         f.write("\n".join(fs_metrics))
 
-
 def Performance_metrics(opFilePath: str, ss: SingleStageCore, fs: FiveStageCore):
     ss_metrics = [
         "Single Stage Core Performance Metrics: ",
@@ -968,6 +982,7 @@ def Performance_metrics(opFilePath: str, ss: SingleStageCore, fs: FiveStageCore)
         f"Instructions per cycle:  {int( ss.inst/(ssCore.cycle - 1) )}",
     ]
 
+    
     fs_metrics = [
         "Five Stage Core Performance Metrics:",
         f"Number of Cycles taken:  {fs.cycle}",
@@ -978,36 +993,18 @@ def Performance_metrics(opFilePath: str, ss: SingleStageCore, fs: FiveStageCore)
     with open(opFilePath + os.sep + "PerformanceMetrics_Result.txt", "w") as f:
         f.write("\n".join(ss_metrics) + "\n\n" + "\n".join(fs_metrics))
 
-
-
-
-
-
-
-#phase 2 added part ended
-
-
-
-
-
-
-
-
-# main
+# main  
 if __name__ == "__main__":
+     
+    #parse arguments for input file location
 
-    # parse arguments for input file location
-
-    parser = argparse.ArgumentParser(
-        description="RV32I single and five stage processor"
-    )
-    parser.add_argument(
-        "--iodir", default="", type=str, help="Directory containing the input files."
-    )
+    parser = argparse.ArgumentParser(description='RV32I single and five stage processor')
+    parser.add_argument('--iodir', default="", type=str, help='Directory containing the input files.')
     args = parser.parse_args()
 
     # the current directory for code
     ioDir = os.path.abspath(args.iodir)
+
 
     # Show the directory for input files
     print("IO Directory:", ioDir)
@@ -1017,40 +1014,34 @@ if __name__ == "__main__":
 
     # single stage processor
     dmem_ss = DataMem("SS", ioDir)
+    
+    ssCore = SingleStageCore(ioDir, imem, dmem_ss) 
 
-    ssCore = SingleStageCore(ioDir, imem, dmem_ss)
-
-    while True:
+    while(True):
         if not ssCore.halted:
             ssCore.step()
 
         if ssCore.halted:
-            ssCore.myRF.outputRF(
-                ssCore.cycle
-            )  # output file of registers after last cycle
-            ssCore.printState(
-                ssCore.nextState, ssCore.cycle
-            )  # print states after last cycle
+            ssCore.myRF.outputRF(ssCore.cycle) # output file of registers after last cycle
+            ssCore.printState(ssCore.nextState, ssCore.cycle) # print states after last cycle
             ssCore.cycle += 1
             break
-
+    
     # dump SS data mem.
     dmem_ss.outputDataMem()
-
+    
     # five stages processor
     dmem_fs = DataMem("FS", ioDir)
 
+    fsCore = FiveStageCore(ioDir, imem, dmem_fs)
 
-#up for phase 2
-    # fsCore = FiveStageCore(ioDir, imem, dmem_fs)
+    while(True):
+        if not fsCore.halted:
+            fsCore.step()
 
-    # while True:
-    #     if not fsCore.halted:
-    #         fsCore.step()
-
-    #     if fsCore.halted:
-    #         break
-
+        if fsCore.halted:
+            break
+    
     # dump FS data mem.
     dmem_fs.outputDataMem()
 
@@ -1059,17 +1050,14 @@ if __name__ == "__main__":
     print("Number of Cycles taken: ", ssCore.cycle, end=", ")
     print("Number of Instruction in Imem: ", ssCore.inst, end="\n\n")
 
-    # print("Five Stage Core Performance Metrics: ")
-    # print("Number of Cycles taken: ", fsCore.cycle, end=", ")
-    # # incrementing num of instructions because of an extra HALT instruction which is never decoded
-    # fsCore.num_instr += 1
-    # print("Number of Instruction in Imem: ", fsCore.num_instr, end="\n\n")
+    print("Five Stage Core Performance Metrics: ")
+    print("Number of Cycles taken: ", fsCore.cycle, end=", ")
+    # incrementing num of instructions because of an extra HALT instruction which is never decoded
+    fsCore.num_instr += 1
+    print("Number of Instruction in Imem: ", fsCore.num_instr , end="\n\n")
 
     # print in file
-    # Performance_metrics(ioDir, ssCore, )
-
-    # Performance_metrics(ioDir, ssCore, fsCore)
+    Performance_metrics(ioDir, ssCore, fsCore)
 
     single_metrics(ioDir, ssCore)
-    # five_metrics(ioDir, fsCore)
-    
+    five_metrics(ioDir, fsCore)
